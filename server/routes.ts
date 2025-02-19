@@ -72,6 +72,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             data: msg
           }));
         }
+      } else if (message.type === "reaction") {
+        const { messageTimestamp, from, to, emoji } = message.data;
+        const targetClient = clients.get(to);
+        if (targetClient?.socket.readyState === WebSocket.OPEN) {
+          targetClient.socket.send(JSON.stringify({
+            type: "reaction",
+            data: { messageTimestamp, from, emoji }
+          }));
+        }
       }
     });
 

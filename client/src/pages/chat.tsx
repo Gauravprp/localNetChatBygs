@@ -32,7 +32,6 @@ export default function Chat() {
     socketClient.connect(username);
 
     socketClient.onUsers((updatedUsers) => {
-      // Filter out the current user but keep Notes and AI Assistant
       setUsers(updatedUsers.filter((u) => u.username !== username));
     });
 
@@ -59,11 +58,30 @@ export default function Chat() {
         });
       }
     });
+
+    socketClient.onReaction(({ messageTimestamp, from, emoji }) => {
+      setMessages(prev => prev.map(msg => {
+        if (msg.timestamp === messageTimestamp) {
+          const existingReaction = msg.reactions.find(r => r.emoji === emoji);
+          if (existingReaction) {
+            if (!existingReaction.users.includes(from)) {
+              existingReaction.users.push(from);
+            }
+            return { ...msg };
+          } else {
+            return {
+              ...msg,
+              reactions: [...msg.reactions, { emoji, users: [from] }]
+            };
+          }
+        }
+        return msg;
+      }));
+    });
   }, [username, setLocation]);
 
   function handleUserSelect(selectedUsername: string) {
     if (selectedUsername === "📝 Notes" || selectedUsername === "🤖 AI Assistant") {
-      // For Notes and AI, directly start the chat without request
       setSelectedUser(selectedUsername);
       toast({
         title: selectedUsername === "📝 Notes" ? "Personal Notes" : "AI Chat",
@@ -71,7 +89,6 @@ export default function Chat() {
           ? "You can store your important notes here"
           : "Chat with our AI assistant",
       });
-      // On mobile, hide sidebar after selection
       if (window.innerWidth < 768) {
         setShowSidebar(false);
       }
@@ -107,20 +124,19 @@ export default function Chat() {
         to: selectedUser,
         content: newMessage,
         timestamp: Date.now(),
+        reactions: [],
       };
 
       if (selectedUser === "📝 Notes") {
-        // For Notes, just add to local messages
         setMessages((prev) => [...prev, message]);
       } else if (selectedUser === "🤖 AI Assistant") {
-        // Add user message
         setMessages((prev) => [...prev, message]);
-        // Simulate AI response
         const aiResponse: Message = {
           from: "🤖 AI Assistant",
           to: username,
           content: "I am a simple AI assistant. In the future, I will be connected to an AI API to provide more meaningful responses!",
           timestamp: Date.now(),
+          reactions: [],
         };
         setTimeout(() => setMessages(prev => [...prev, aiResponse]), 1000);
       } else {
@@ -131,9 +147,31 @@ export default function Chat() {
     }
   }
 
+  function handleReaction(messageTimestamp: number, to: string, emoji: string) {
+    if (!username) return;
+
+    socketClient.sendReaction(messageTimestamp, username, to, emoji);
+    setMessages(prev => prev.map(msg => {
+      if (msg.timestamp === messageTimestamp) {
+        const existingReaction = msg.reactions.find(r => r.emoji === emoji);
+        if (existingReaction) {
+          if (!existingReaction.users.includes(username)) {
+            existingReaction.users.push(username);
+          }
+          return { ...msg };
+        } else {
+          return {
+            ...msg,
+            reactions: [...msg.reactions, { emoji, users: [username] }]
+          };
+        }
+      }
+      return msg;
+    }));
+  }
+
   return (
     <div className="flex h-screen bg-background">
-      {/* Mobile menu button */}
       <button
         className="md:hidden fixed top-4 left-4 z-20 p-2 bg-primary text-primary-foreground rounded-md"
         onClick={() => setShowSidebar(!showSidebar)}
@@ -141,7 +179,6 @@ export default function Chat() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Sidebar */}
       <div
         className={`${
           showSidebar ? "translate-x-0" : "-translate-x-full"
@@ -181,7 +218,6 @@ export default function Chat() {
         </ScrollArea>
       </div>
 
-      {/* Chat area */}
       <div className="flex-1 flex flex-col relative">
         {selectedUser ? (
           <>
@@ -202,6 +238,9 @@ export default function Chat() {
                       content={message.content}
                       timestamp={message.timestamp}
                       isSelf={message.from === username}
+                      reactions={message.reactions}
+                      username={username!}
+                      onAddReaction={(emoji) => handleReaction(message.timestamp, message.from, emoji)}
                     />
                   ))}
               </div>

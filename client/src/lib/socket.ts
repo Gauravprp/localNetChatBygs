@@ -4,6 +4,7 @@ type MessageCallback = (message: Message) => void;
 type UsersCallback = (users: User[]) => void;
 type ChatRequestCallback = (request: ChatRequest) => void;
 type ChatResponseCallback = (response: { from: string, accepted: boolean }) => void;
+type ReactionCallback = (data: { messageTimestamp: number, from: string, to: string, emoji: string }) => void;
 
 class SocketClient {
   private socket: WebSocket | null = null;
@@ -11,6 +12,7 @@ class SocketClient {
   private usersCallbacks: UsersCallback[] = [];
   private chatRequestCallbacks: ChatRequestCallback[] = [];
   private chatResponseCallbacks: ChatResponseCallback[] = [];
+  private reactionCallbacks: ReactionCallback[] = [];
 
   connect(username: string) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -23,7 +25,7 @@ class SocketClient {
 
     this.socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      
+
       switch (message.type) {
         case "message":
           this.messageCallbacks.forEach(cb => cb(message.data));
@@ -37,12 +39,22 @@ class SocketClient {
         case "chatResponse":
           this.chatResponseCallbacks.forEach(cb => cb(message.data));
           break;
+        case "reaction":
+          this.reactionCallbacks.forEach(cb => cb(message.data));
+          break;
       }
     };
   }
 
   sendMessage(message: Message) {
     this.socket?.send(JSON.stringify({ type: "message", data: message }));
+  }
+
+  sendReaction(messageTimestamp: number, from: string, to: string, emoji: string) {
+    this.socket?.send(JSON.stringify({
+      type: "reaction",
+      data: { messageTimestamp, from, to, emoji }
+    }));
   }
 
   sendChatRequest(request: ChatRequest) {
@@ -70,6 +82,10 @@ class SocketClient {
 
   onChatResponse(callback: ChatResponseCallback) {
     this.chatResponseCallbacks.push(callback);
+  }
+
+  onReaction(callback: ReactionCallback) {
+    this.reactionCallbacks.push(callback);
   }
 }
 

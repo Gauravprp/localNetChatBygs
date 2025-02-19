@@ -15,11 +15,17 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export type Reaction = {
+  emoji: string;
+  users: string[];
+};
+
 export type Message = {
   from: string;
   to: string;
   content: string;
   timestamp: number;
+  reactions: Reaction[];
 };
 
 export type ChatRequest = {
