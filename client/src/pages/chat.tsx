@@ -29,6 +29,7 @@ export default function Chat() {
     socketClient.connect(username);
 
     socketClient.onUsers((updatedUsers) => {
+      // Filter out the current user but keep Notes user
       setUsers(updatedUsers.filter((u) => u.username !== username));
     });
 
@@ -58,11 +59,20 @@ export default function Chat() {
   }, [username, setLocation]);
 
   function handleUserSelect(selectedUsername: string) {
-    socketClient.sendChatRequest({ from: username!, to: selectedUsername });
-    toast({
-      title: "Chat request sent",
-      description: `Waiting for ${selectedUsername} to accept...`,
-    });
+    if (selectedUsername === "📝 Notes") {
+      // For Notes, directly start the chat without request
+      setSelectedUser(selectedUsername);
+      toast({
+        title: "Personal Notes",
+        description: "You can store your important notes here",
+      });
+    } else {
+      socketClient.sendChatRequest({ from: username!, to: selectedUsername });
+      toast({
+        title: "Chat request sent",
+        description: `Waiting for ${selectedUsername} to accept...`,
+      });
+    }
   }
 
   function handleAcceptChat() {
@@ -89,8 +99,14 @@ export default function Chat() {
         content: newMessage,
         timestamp: Date.now(),
       };
-      socketClient.sendMessage(message);
-      setMessages((prev) => [...prev, message]);
+
+      if (selectedUser === "📝 Notes") {
+        // For Notes, just add to local messages
+        setMessages((prev) => [...prev, message]);
+      } else {
+        socketClient.sendMessage(message);
+        setMessages((prev) => [...prev, message]);
+      }
       setNewMessage("");
     }
   }
@@ -109,12 +125,16 @@ export default function Chat() {
                 variant="ghost"
                 className="w-full justify-start"
                 onClick={() => handleUserSelect(user.username)}
-                disabled={!user.online}
+                disabled={!user.online && user.username !== "📝 Notes"}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      user.online ? "bg-green-500" : "bg-gray-400"
+                      user.username === "📝 Notes"
+                        ? "bg-yellow-500"
+                        : user.online
+                        ? "bg-green-500"
+                        : "bg-gray-400"
                     }`}
                   />
                   {user.username}
