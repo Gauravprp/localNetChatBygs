@@ -40,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     socket.on("message", async (data) => {
       const message = JSON.parse(data.toString());
 
-      if (message.type === "register") {
+      if (message.type === "register" && message.username) {
         username = message.username;
         clients.set(username, { username, socket });
         await storage.setUserOnline(username, true);
@@ -87,11 +87,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function broadcastUsers() {
     const users = await storage.listUsers();
     const message = JSON.stringify({ type: "users", data: users });
-    for (const client of clients.values()) {
+    Array.from(clients.values()).forEach(client => {
       if (client.socket.readyState === WebSocket.OPEN) {
         client.socket.send(message);
       }
-    }
+    });
   }
 
   return httpServer;
