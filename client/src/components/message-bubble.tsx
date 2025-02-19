@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ReactionPicker } from "./reaction-picker";
 import type { Reaction } from "@shared/schema";
+import { FileIcon } from "lucide-react";
 
 type MessageBubbleProps = {
   content: string;
@@ -10,6 +11,11 @@ type MessageBubbleProps = {
   reactions: Reaction[];
   username: string;
   onAddReaction: (emoji: string) => void;
+  attachments?: {
+    name: string;
+    url: string;
+    type: string;
+  }[];
 };
 
 export function MessageBubble({ 
@@ -18,7 +24,8 @@ export function MessageBubble({
   isSelf, 
   reactions,
   username,
-  onAddReaction 
+  onAddReaction,
+  attachments = []
 }: MessageBubbleProps) {
   return (
     <div className={cn("flex flex-col gap-1", isSelf ? "items-end" : "items-start")}>
@@ -31,6 +38,28 @@ export function MessageBubble({
         )}
       >
         <p className="break-words">{content}</p>
+        {attachments.map((attachment, index) => (
+          <div key={index} className="mt-2">
+            {attachment.type.startsWith('image/') ? (
+              <img 
+                src={attachment.url} 
+                alt={attachment.name}
+                className="max-w-full rounded-md"
+              />
+            ) : (
+              <a 
+                href={attachment.url} 
+                download={attachment.name}
+                className="flex items-center gap-2 text-sm hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileIcon className="h-4 w-4" />
+                {attachment.name}
+              </a>
+            )}
+          </div>
+        ))}
         <p className="mt-1 text-xs opacity-70">
           {format(timestamp, "HH:mm")}
         </p>

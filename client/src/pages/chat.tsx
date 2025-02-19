@@ -11,6 +11,7 @@ import type { User, Message } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { FileUpload } from "@/components/file-upload";
 
 export default function Chat() {
   const [, setLocation] = useLocation();
@@ -125,6 +126,7 @@ export default function Chat() {
         content: newMessage,
         timestamp: Date.now(),
         reactions: [],
+        attachments: [], // Added attachments array
       };
 
       if (selectedUser === "📝 Notes") {
@@ -137,6 +139,7 @@ export default function Chat() {
           content: "I am a simple AI assistant. In the future, I will be connected to an AI API to provide more meaningful responses!",
           timestamp: Date.now(),
           reactions: [],
+          attachments: [], // Added attachments array
         };
         setTimeout(() => setMessages(prev => [...prev, aiResponse]), 1000);
       } else {
@@ -241,12 +244,20 @@ export default function Chat() {
                       reactions={message.reactions}
                       username={username!}
                       onAddReaction={(emoji) => handleReaction(message.timestamp, message.from, emoji)}
+                      attachments={message.attachments}
                     />
                   ))}
               </div>
             </ScrollArea>
             <form onSubmit={handleSendMessage} className="p-4 border-t">
               <div className="flex gap-2">
+                <FileUpload 
+                  onFileSelect={(file) => {
+                    if (selectedUser && username) {
+                      socketClient.sendFile(file, selectedUser, selectedUser.startsWith('group_'));
+                    }
+                  }} 
+                />
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
