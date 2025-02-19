@@ -1,10 +1,11 @@
-import { type User, type Message, type ChatRequest } from "@shared/schema";
+import { type User, type Message, type ChatRequest, type GroupChat, type UserStatus } from "@shared/schema";
 
 type MessageCallback = (message: Message) => void;
 type UsersCallback = (users: User[]) => void;
 type ChatRequestCallback = (request: ChatRequest) => void;
 type ChatResponseCallback = (response: { from: string, accepted: boolean }) => void;
 type ReactionCallback = (data: { messageTimestamp: number, from: string, to: string, emoji: string }) => void;
+type GroupUpdateCallback = (group: GroupChat) => void;
 
 class SocketClient {
   private socket: WebSocket | null = null;
@@ -13,6 +14,7 @@ class SocketClient {
   private chatRequestCallbacks: ChatRequestCallback[] = [];
   private chatResponseCallbacks: ChatResponseCallback[] = [];
   private reactionCallbacks: ReactionCallback[] = [];
+  private groupUpdateCallbacks: GroupUpdateCallback[] = [];
 
   connect(username: string) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -42,6 +44,9 @@ class SocketClient {
         case "reaction":
           this.reactionCallbacks.forEach(cb => cb(message.data));
           break;
+        case "groupUpdate":
+          this.groupUpdateCallbacks.forEach(cb => cb(message.data));
+          break;
       }
     };
   }
@@ -68,6 +73,38 @@ class SocketClient {
     }));
   }
 
+  setStatus(status: UserStatus) {
+    this.socket?.send(JSON.stringify({
+      type: "setStatus",
+      data: { status }
+    }));
+  }
+
+  createGroup(name: string, members: string[]) {
+    this.socket?.send(JSON.stringify({
+      type: "createGroup",
+      data: { name, members }
+    }));
+  }
+
+  sendFile(file: File, to: string, isGroup: boolean = false) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      this.socket?.send(JSON.stringify({
+        type: "file",
+        data: {
+          name: file.name,
+          type: file.type,
+          data: base64,
+          to,
+          isGroup
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
+  }
+
   onMessage(callback: MessageCallback) {
     this.messageCallbacks.push(callback);
   }
@@ -86,6 +123,10 @@ class SocketClient {
 
   onReaction(callback: ReactionCallback) {
     this.reactionCallbacks.push(callback);
+  }
+
+  onGroupUpdate(callback: GroupUpdateCallback) {
+    this.groupUpdateCallbacks.push(callback);
   }
 }
 
