@@ -16,13 +16,23 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.currentId = 1;
 
-    // Initialize with Notes user
-    const notesUser: User = {
-      id: this.currentId++,
-      username: "📝 Notes",
-      online: true,
-    };
-    this.users.set(notesUser.id, notesUser);
+    // Initialize with special users
+    const specialUsers: User[] = [
+      {
+        id: this.currentId++,
+        username: "📝 Notes",
+        online: true,
+      },
+      {
+        id: this.currentId++,
+        username: "🤖 AI Assistant",
+        online: true,
+      },
+    ];
+
+    specialUsers.forEach(user => {
+      this.users.set(user.id, user);
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {

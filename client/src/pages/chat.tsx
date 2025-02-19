@@ -9,6 +9,7 @@ import { ChatRequestDialog } from "@/components/chat-request-dialog";
 import { socketClient } from "@/lib/socket";
 import type { User, Message } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Menu } from "lucide-react";
 
 export default function Chat() {
   const [, setLocation] = useLocation();
@@ -18,6 +19,7 @@ export default function Chat() {
   const [pendingRequest, setPendingRequest] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [showSidebar, setShowSidebar] = useState(true);
   const username = localStorage.getItem("username");
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function Chat() {
     socketClient.connect(username);
 
     socketClient.onUsers((updatedUsers) => {
-      // Filter out the current user but keep Notes user
+      // Filter out the current user but keep Notes and AI Assistant
       setUsers(updatedUsers.filter((u) => u.username !== username));
     });
 
@@ -59,13 +61,19 @@ export default function Chat() {
   }, [username, setLocation]);
 
   function handleUserSelect(selectedUsername: string) {
-    if (selectedUsername === "📝 Notes") {
-      // For Notes, directly start the chat without request
+    if (selectedUsername === "📝 Notes" || selectedUsername === "🤖 AI Assistant") {
+      // For Notes and AI, directly start the chat without request
       setSelectedUser(selectedUsername);
       toast({
-        title: "Personal Notes",
-        description: "You can store your important notes here",
+        title: selectedUsername === "📝 Notes" ? "Personal Notes" : "AI Chat",
+        description: selectedUsername === "📝 Notes" 
+          ? "You can store your important notes here"
+          : "Chat with our AI assistant",
       });
+      // On mobile, hide sidebar after selection
+      if (window.innerWidth < 768) {
+        setShowSidebar(false);
+      }
     } else {
       socketClient.sendChatRequest({ from: username!, to: selectedUsername });
       toast({
@@ -90,7 +98,7 @@ export default function Chat() {
     }
   }
 
-  function handleSendMessage(e: React.FormEvent) {
+  async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (newMessage.trim() && selectedUser && username) {
       const message: Message = {
@@ -103,6 +111,17 @@ export default function Chat() {
       if (selectedUser === "📝 Notes") {
         // For Notes, just add to local messages
         setMessages((prev) => [...prev, message]);
+      } else if (selectedUser === "🤖 AI Assistant") {
+        // Add user message
+        setMessages((prev) => [...prev, message]);
+        // Simulate AI response
+        const aiResponse: Message = {
+          from: "🤖 AI Assistant",
+          to: username,
+          content: "I am a simple AI assistant. In the future, I will be connected to an AI API to provide more meaningful responses!",
+          timestamp: Date.now(),
+        };
+        setTimeout(() => setMessages(prev => [...prev, aiResponse]), 1000);
       } else {
         socketClient.sendMessage(message);
         setMessages((prev) => [...prev, message]);
@@ -113,7 +132,20 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen bg-background">
-      <div className="w-80 border-r">
+      {/* Mobile menu button */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-20 p-2 bg-primary text-primary-foreground rounded-md"
+        onClick={() => setShowSidebar(!showSidebar)}
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Sidebar */}
+      <div
+        className={`${
+          showSidebar ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 fixed md:static z-10 w-80 h-full bg-background border-r transition-transform duration-200 ease-in-out`}
+      >
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold">Available Users</h2>
         </div>
@@ -125,13 +157,15 @@ export default function Chat() {
                 variant="ghost"
                 className="w-full justify-start"
                 onClick={() => handleUserSelect(user.username)}
-                disabled={!user.online && user.username !== "📝 Notes"}
+                disabled={!user.online && !["📝 Notes", "🤖 AI Assistant"].includes(user.username)}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
                       user.username === "📝 Notes"
                         ? "bg-yellow-500"
+                        : user.username === "🤖 AI Assistant"
+                        ? "bg-blue-500"
                         : user.online
                         ? "bg-green-500"
                         : "bg-gray-400"
@@ -145,7 +179,8 @@ export default function Chat() {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 flex flex-col">
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col relative">
         {selectedUser ? (
           <>
             <div className="p-4 border-b">
@@ -181,9 +216,9 @@ export default function Chat() {
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center p-4">
             <Card className="p-6">
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-center">
                 Select a user to start chatting
               </p>
             </Card>
