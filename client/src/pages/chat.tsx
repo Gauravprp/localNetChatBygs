@@ -10,6 +10,7 @@ import { socketClient } from "@/lib/socket";
 import type { User, Message } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Menu } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Chat() {
   const [, setLocation] = useLocation();
@@ -66,7 +67,7 @@ export default function Chat() {
       setSelectedUser(selectedUsername);
       toast({
         title: selectedUsername === "📝 Notes" ? "Personal Notes" : "AI Chat",
-        description: selectedUsername === "📝 Notes" 
+        description: selectedUsername === "📝 Notes"
           ? "You can store your important notes here"
           : "Chat with our AI assistant",
       });
@@ -146,8 +147,9 @@ export default function Chat() {
           showSidebar ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 fixed md:static z-10 w-80 h-full bg-background border-r transition-transform duration-200 ease-in-out`}
       >
-        <div className="p-4 border-b">
+        <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Available Users</h2>
+          <ThemeToggle />
         </div>
         <ScrollArea className="h-[calc(100vh-73px)]">
           <div className="p-4 space-y-2">
